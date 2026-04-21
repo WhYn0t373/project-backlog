@@ -1,0 +1,5 @@
+# CODEOWNERS file for project-backlog
+# This file specifies code owners for the repository.
+# All files are owned by the project team.
+
+* @org/project-team
