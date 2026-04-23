@@ -1,0 +1,29 @@
+name: Branch Protection Check
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check branch protection
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const { data: protection } = await github.repos.getBranchProtection({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              branch: 'main',
+            });
+
+            if (!protection.required_pull_request_reviews ||
+                protection.required_pull_request_reviews.required_approving_review_count !== 1) {
+              core.setFailed('Branch protection does not require 1 approving review.');
+            }
+
+            if (!protection.enforce_admins || !protection.enforce_admins.enabled) {
+              core.setFailed('Branch protection does not enforce admin permissions.');
+            }
