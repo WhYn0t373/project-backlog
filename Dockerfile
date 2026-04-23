@@ -1,38 +1,33 @@
-# Dockerfile
-# Base image
-FROM php:8.3-fpm-alpine
+# Dockerfile for the application
 
-# Install system dependencies and PHP extensions
-RUN apk add --no-cache \
-        git \
-        unzip \
-        libpng-dev \
-        libjpeg-turbo-dev \
-        libwebp-dev \
-        libxpm-dev \
-        freetype-dev \
-        libxml2-dev \
-        oniguruma-dev \
-        libzip-dev \
-        curl \
-        bash \
-    && docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
-    && docker-php-ext-install pdo_mysql mbstring xml zip gd exif curl
+FROM php:8.2-fpm
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    git \
+    unzip \
+    libzip-dev \
+    libpq-dev \
+    libonig-dev \
+    libicu-dev \
+    zlib1g-dev \
+    libxml2-dev \
+    && docker-php-ext-install pdo pdo_mysql mbstring exif \
+    && docker-php-ext-install intl zip
 
 # Install Composer
-COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
+COPY --from=composer:2.2 /usr/bin/composer /usr/local/bin/composer
 
-# Set working directory
 WORKDIR /var/www/html
 
 # Copy application code
 COPY . .
 
-# Install PHP dependencies
-RUN composer install --no-dev --optimize-autoloader --no-progress --no-scripts
+# Install application dependencies
+RUN composer install --no-interaction --prefer-dist --optimize-autoloader
 
-# Expose FPM port
-EXPOSE 9000
+# Expose metrics port
+EXPOSE 9112
 
-# Default command
+# Set default command
 CMD ["php-fpm"]

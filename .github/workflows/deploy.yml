@@ -44,4 +44,4 @@ jobs:
           echo "$SSH_PRIVATE_KEY" > /tmp/id_rsa
           chmod 600 /tmp/id_rsa
           scp -o StrictHostKeyChecking=no -i /tmp/id_rsa docker-compose.yml $DOCKER_HOST:/home/ubuntu/docker-compose.yml
-          ssh -o StrictHostKeyChecking=no -i /tmp/id_rsa $DOCKER_HOST "docker stack deploy -c /home/ubuntu/docker-compose.yml mystack"
+          ssh -o StrictHostKeyChecking=no -i /tmp/id_rsa $DOCKER_HOST "dockeranlage stack deploy -c /home/ubuntu/docker-compose.yml mystack"
