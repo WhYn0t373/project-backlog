@@ -1,0 +1,27 @@
+name: Setup Repository
+
+on:
+  workflow_dispatch:
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install GitHub CLI
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gh
+
+      - name: Authenticate gh CLI
+        # Use the automatically provided GITHUB_TOKEN which has repo creation permissions
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
+
+      - name: Execute repository setup script
+        run: |
+          chmod +x setup_repo.sh
+          ./setup_repo.sh
