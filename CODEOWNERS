@@ -1,3 +1,8 @@
-# Code owners for the project
-# All files: @WhYn0t373/project-backlog-team
-* @WhYn0t373/project-backlog-team
+# Entire repository
+* @team/backend @team/frontend
+
+# Documentation
+docs/ @team/docs
+
+# Source code
+src/ @team/backend
