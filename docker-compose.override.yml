@@ -1,0 +1,11 @@
+# docker-compose.override.yml
+version: "3.8"
+
+services:
+  app:
+    volumes:
+      - .:/var/www/html
+    ports:
+      - "9000:9000"
+    environment:
+      APP_DEBUG: "true"
