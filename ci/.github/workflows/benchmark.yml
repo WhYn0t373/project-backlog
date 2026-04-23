@@ -1,0 +1,52 @@
+name: Benchmark
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: pdo_mysql, redis
+          coverage: none
+
+      - name: Install Composer dependencies
+        run: composer install --no-progress --no-scripts --prefer-dist
+
+      - name: Run database migrations
+        run: php artisan migrate --force
+
+      - name: Deploy application
+        run: echo "Deploying application..." # placeholder for actual deployment steps
+
+  benchmark:
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: pdo_mysql, redis
+          coverage: none
+
+      - name: Install Composer dependencies
+        run: composer install --no-progress --no-scripts --prefer-dist
+
+      - name: Clear application cache
+        run: php artisan cache:clear
+
+      - name: Run benchmark script
+        run: bash scripts/benchmark.sh
