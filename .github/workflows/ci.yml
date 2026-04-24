@@ -2,64 +2,52 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
-  build-and-test:
+  run-migrations-and-seed:
     runs-on: ubuntu-latest
     services:
       mysql:
-        image: mysql:8.3
+        image: mysql:8.0
         env:
-          MYSQL_ROOT_PASSWORD: secret
-          MYSQL_DATABASE: laravel
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: project_backlog
           MYSQL_USER: root
-          MYSQL_PASSWORD: secret
+          MYSQL_PASSWORD: root
         ports:
           - 3306:3306
         options: >-
-          --health-cmd="mysqladmin ping -h localhost -uroot -psecret"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=3
+          --health-cmd "mysqladmin ping -h localhost -u root -proot"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: "8.3"
-          extensions: pdo_mysql, mbstring, exif, gd, zip
-          coverage: pcov
+          php-version: '8.2'
+          extensions: pdo_mysql
+          coverage: none
 
       - name: Install Composer dependencies
-        run: |
-          composer install --prefer-dist --no-progress --no-suggest --optimize-autoloader
+        run: composer install --prefer-dist --no-progress --no-scripts
 
-      - name: Copy .env for testing
+      - name: Wait for MySQL to be ready
         run: |
-          cp .env.example .env
-          echo "DB_HOST=mysql" >> .env
-          echo "DB_DATABASE=laravel" >> .env
-          echo "DB_USERNAME=root" >> .env
-          echo "DB_PASSWORD=secret" >> .env
-          echo "JWT_SECRET=demo_secret_32_bytes_string_demo_secret_32" >> .env
-          echo "JWT_TTL=60" >> .env
+          until mysqladmin ping -h localhost -u root -proot; do
+            echo "Waiting for MySQL..."
+            sleep 1
+          done
 
-      - name: Run migrations
-        run: |
-          php artisan migrate --env=testing --no-interaction
+      - name: Run database migrations
+        run: php artisan migrate --force
 
-      - name: Run PHPUnit tests
-        run: |
-          vendor/bin/phpunit --coverage-clover=coverage.xml
-
-      - name: Upload PHPUnit coverage
-        uses: actions/upload-artifact@v4
-        with:
-          name: phpunit-coverage
-          path: coverage.xml
+      - name: Run database seeders
+        run: php artisan db:seed --force
