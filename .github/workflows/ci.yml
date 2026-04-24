@@ -2,52 +2,86 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [ main ]
   pull_request:
-    branches: [main]
 
 jobs:
-  run-migrations-and-seed:
+  test:
     runs-on: ubuntu-latest
     services:
       mysql:
         image: mysql:8.0
         env:
           MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: project_backlog
-          MYSQL_USER: root
-          MYSQL_PASSWORD: root
+          MYSQL_DATABASE: test
+          MYSQL_USER: test
+          MYSQL_PASSWORD: test
         ports:
           - 3306:3306
         options: >-
-          --health-cmd "mysqladmin ping -h localhost -u root -proot"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+          --health-cmd="mysqladmin ping -h localhost"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
+    env:
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_DATABASE: test
+      DB_USERNAME: test
+      DB_PASSWORD: test
+      APP_ENV: testing
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.2'
-          extensions: pdo_mysql
-          coverage: none
+          php-version: "8.3"
+          extensions: mbstring,pdo_mysql,zip,intl
+          coverage: xdebug
+          ini-values: "memory_limit=-1, max_execution_time=180"
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-composer-
 
       - name: Install Composer dependencies
-        run: composer install --prefer-dist --no-progress --no-scripts
+        run: composer install --prefer-dist --no-progress --no-suggest --no-interaction
 
-      - name: Wait for MySQL to be ready
-        run: |
-          until mysqladmin ping -h localhost -u root -proot; do
-            echo "Waiting for MySQL..."
-            sleep 1
-          done
+      - name: Cache npm dependencies
+        uses: actions/cache@v3
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('package-lock.json') }}
+          restore-keys: ${{ runner.os }}-node-
+
+      - name: Install Node dependencies
+        run: npm ci --prefer-offline
+
+      - name: Copy .env.example to .env
+        run: cp .env.example .env
+
+      - name: Generate application key
+        run: php artisan key:generate
 
       - name: Run database migrations
-        run: php artisan migrate --force
+        run: php artisan migrate --env=testing --force
 
-      - name: Run database seeders
-        run: php artisan db:seed --force
+      - name: Execute tests
+        run: vendor/bin/phpunit --coverage-text --coverage-clover=coverage.xml
+
+      - name: Upload coverage report to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: coverage.xml
+          flags: unittests
+          name: codecov-umbrella
