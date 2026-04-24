@@ -2,118 +2,107 @@ name: CI
 
 on:
   push:
-    branches: [ main, master, staging ]
+    branches: [ main ]
   pull_request:
-    branches: [ main, master, staging ]
+    branches: [ main ]
+
+env:
+  IMAGE_NAME: myapp
+  REGISTRY: ghcr.io/${{ github.repository_owner }}
 
 jobs:
-  build:
+  lint:
     runs-on: ubuntu-latest
-    services:
-      mysql:
-        image: mysql:5.7
-        env:
-          MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: app
-          MYSQL_USER: app
-          MYSQL_PASSWORD: app
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd="mysqladmin ping --silent"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=3
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y php-cs-fixer
+          npm ci
+
+      - name: Run linting
+        run: bash scripts/lint.sh
+
+  test:
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v3
 
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.2'
-          extensions: mbstring,pdo_mysql,zip
-          coverage: none
-
-      - name: Set up Node
-        uses: actions/setup-node@v3
-        with:
-          node-version: '20'
-          cache: npm
-
-      - name: Cache composer dependencies
-        uses: actions/cache@v3
-        with:
-          path: vendor
-          key: ${{ runner.os }}-composer-${{ hashFiles('composer.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-composer-
-
-      - name: Cache npm dependencies
-        uses: actions/cache@v3
-        with:
-          path: node_modules
-          key: ${{ runner.os }}-node-${{ hashFiles('package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
+          php-version: 8.2
+          extensions: mbstring, pdo, pdo_mysql
 
       - name: Install Composer dependencies
-        run: composer install --prefer-dist --no-progress --no-suggest --no-interaction
+        run: composer install
 
-      - name: Install NPM dependencies
+      - name: Install Node dependencies
         run: npm ci
 
-      - name: PHP Lint
-        run: find . -type f -name "*.php" -not -path "./vendor/*" -print0 | xargs -0 -n1 php -l
-
       - name: Run PHP unit tests
-        run: php artisan test --parallel --coverage-text --stop-on-failure
+        run: vendor/bin/phpunit
 
-      - name: Run integration tests
-        run: php artisan test --testsuite=Integration
+      - name: Run JavaScript tests
+        run: npm test
 
-      - name: Build Docker image
-        run: |
-          IMAGE_TAG=${{ secrets.DOCKER_REGISTRY }}/${{ github.repository_owner }}/${{ github.repository }}:${{ github.sha }}
-          docker build -t $IMAGE_TAG .
+  build:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v3
 
-      - name: Docker login
-        uses: docker/login-action@v2
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
         with:
-          registry: ${{ secrets.DOCKER_REGISTRY }}
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+          registry: ghcr.io
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
 
-      - name: Push Docker image
+      - name: Build and push Docker image
+        id: docker_build
         run: |
-          IMAGE_TAG=${{ secrets.DOCKER_REGISTRY }}/${{ github.repository_owner }}/${{ github.repository }}:${{ github.sha }}
-          docker push $IMAGE_TAG
+          IMAGE_TAG=${{ github.sha }}
+          docker buildx build \
+            --platform linux/amd64,linux/arm64 \
+            --tag $REGISTRY/${IMAGE_NAME}:${IMAGE_TAG} \
+            --tag $REGISTRY/${IMAGE_NAME}:latest \
+            --push .
 
-      - name: Start services
-        env:
-          IMAGE_TAG: ${{ secrets.DOCKER_REGISTRY }}/${{ github.repository_owner }}/${{ github.repository }}:${{ github.sha }}
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    environment:
+      name: staging
+      url: ${{ secrets.STAGING_URL }}
+    env:
+      IMAGE_TAG: ${{ github.sha }}
+      REGISTRY_URL: ghcr.io/${{ github.repository_owner }}
+      IMAGE_NAME: ${{ env.IMAGE_NAME }}
+    steps:
+      - name: Decode SSH key
         run: |
-          docker compose -f docker-compose.yml up -d
-          # Wait for MySQL to be ready
-          until docker exec mysql mysqladmin ping -h "localhost" -u"app" -p"app" &>/dev/null; do sleep 1; done
-          # Run migrations
-          docker exec app php artisan migrate --force
+          echo "${{ secrets.STAGING_SSH_KEY }}" > /tmp/id_rsa
+          chmod 600 /tmp/id_rsa
 
-      - name: Run E2E tests
-        uses: cypress-io/github-action@v6
-        with:
-          start: npm run dev
-          wait-on: http://localhost:8000
-          wait-on-timeout: 60
+      - name: Set up SSH agent
+        run: |
+          eval "$(ssh-agent -s)"
+          ssh-add /tmp/id_rsa
 
       - name: Deploy to staging
-        uses: appleboy/ssh-action@v0.1.10
-        with:
-          host: ${{ secrets.STAGING_HOST }}
-          username: ${{ secrets.STAGING_USER }}
-          key: ${{ secrets.STAGING_SSH_KEY }}
-          script: |
-            cd ${{ secrets.STAGING_DEPLOY_PATH }}
-            IMAGE_TAG=${{ secrets.DOCKER_REGISTRY }}/${{ github.repository_owner }}/${{ github.repository }}:${{ github.sha }}
-            bash deploy-staging.sh "$IMAGE_TAG"
+        run: |
+          # Transfer deployment script to staging host
+          scp -o StrictHostKeyChecking=no -i /tmp/id_rsa deploy_staging.sh ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }}:/tmp/deploy_staging.sh
+
+          # Execute the deployment script on the staging host
+          ssh -o StrictHostKeyChecking=no -i /tmp/id_rsa ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }} 'bash /tmp/deploy_staging.sh'
