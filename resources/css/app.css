@@ -1,3 +1,16 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+    --color-primary-text: #111827;
+}
+
+:focus {
+    outline: 2px solid #6366f1;
+    outline-offset: 2px;
+}
+
+.text-primary {
+    color: var(--color-primary-text);
+}
