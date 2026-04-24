@@ -1,9 +1,10 @@
-name: CI
+name: Continuous Integration
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
+    branches: [main]
 
 jobs:
   test:
@@ -34,18 +35,18 @@ jobs:
       APP_ENV: testing
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: "8.3"
-          extensions: mbstring,pdo_mysql,zip,intl
+          php-version: '8.2'
+          extensions: mbstring, pdo_mysql, zip, intl
           coverage: xdebug
           ini-values: "memory_limit=-1, max_execution_time=180"
 
-      - name: Cache Composer dependencies
+      - name: Cache composer dependencies
         uses: actions/cache@v4
         with:
           path: vendor
@@ -54,17 +55,7 @@ jobs:
             ${{ runner.os }}-composer-
 
       - name: Install Composer dependencies
-        run: composer install --prefer-dist --no-progress --no-suggest --no-interaction
-
-      - name: Cache npm dependencies
-        uses: actions/cache@v3
-        with:
-          path: node_modules
-          key: ${{ runner.os }}-node-${{ hashFiles('package-lock.json') }}
-          restore-keys: ${{ runner.os }}-node-
-
-      - name: Install Node dependencies
-        run: npm ci --prefer-offline
+        run: composer install --no-interaction --prefer-dist --no-progress
 
       - name: Copy .env.example to .env
         run: cp .env.example .env

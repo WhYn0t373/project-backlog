@@ -1,45 +1,46 @@
 # Test Strategy
 
-## 1. Objectives
-- **Ensure functional correctness** of the API endpoints and internal logic.  
-- **Detect regressions** early through automated tests.  
-- **Provide measurable quality metrics** (coverage, performance) to guide future development.
+## Overview
+This document outlines the test strategy for the project. The goal is to ensure all code changes maintain or improve the quality and reliability of the application by executing a comprehensive set of tests across different layers of the stack.
 
-## 2. Test Scope
+## Scope of Tests
 
-| Test Type | Coverage | Typical Tests | Environment |
-|-----------|----------|---------------|-------------|
-| **Unit** | 90%+ of the codebase | Individual service classes, repositories, helper functions | Local/CI |
-| **Integration** | 70%+ of service boundaries | Controller → Repository, Event → Listener, middleware chains | Local/CI |
-| **End‑to‑End (E2E)** | 80%+ of public API flow | Full HTTP request/response cycles, authentication & authorization flows | Staging (optional) |
+| Test Type | Description | Tool | Environment | Coverage Goal |
+|-----------|-------------|------|-------------|---------------|
+| **Unit** | Test isolated units of code (controllers, services, helpers). | PHPUnit | Local / GitHub Actions | ≥ 90 % statement coverage |
+| **Integration** | Verify interactions between components (e.g., database, API endpoints). | PHPUnit + Laravel’s HTTP testing | Local / GitHub Actions | ≥ 80 % statement coverage |
+| **End‑to‑End (E2E)** | Simulate user workflows and ensure the system behaves correctly. | Cypress (or Laravel Dusk) | Local / GitHub Actions | ≥ 70 % functional coverage |
 
-> *Note:* Tests are grouped by namespace so that the `php artisan test` command can run them concurrently with the `--parallel` flag.
+> **Note:** E2E tests are optional for branches that do not touch critical flows. They can be run manually or on a scheduled basis.
 
-## 3. Test Levels
+## Test Environment
 
-| Level | Purpose | Tooling |
-|-------|---------|---------|
-| **Unit** | Test logic in isolation | PHPUnit, Mockery |
-| **Feature** | Test HTTP routes and middleware | PHPUnit + Laravel HTTP tests |
-| **Browser** | Optional E2E for complex flows | Laravel Dusk (currently not used) |
+| Layer | Environment | Configuration |
+|-------|-------------|---------------|
+| **Local** | `docker-compose up -d` | Docker images for PHP, MySQL, Redis, and Node (if needed). |
+| **CI** | GitHub Actions (ubuntu‑latest) | PHP 8.2, Composer, Xdebug for coverage. |
+| **Staging** | Dedicated deployment | Mirrors production as closely as possible. |
 
-## 4. Execution Environment
-- **CI**: GitHub Actions (`.github/workflows/ci.yml`) runs all tests on every push and pull‑request.  
-- **Local**: `php artisan test` runs the entire suite; `php artisan test --filter` can target a specific test case.
+## Test Data & Seeding
 
-## 5. Quality Metrics
+- Test databases are created via Laravel migrations.
+- Factories and seeders are used for generating realistic test data.
+- Test suites run against an isolated SQLite in‑memory database when possible to speed up execution.
 
-| Metric | Target | Tool |
-|--------|--------|------|
-| **Code Coverage** | ≥ 80% overall, ≥ 90% for critical paths | PHPUnit --coverage-text |
-| **Static Analysis** | No critical warnings | PHPStan level 5 |
-| **Security** | No high‑severity findings | Runkit/Dependabot (dependency check) |
+## Reporting & Metrics
 
-## 6. Sign‑off
-Once reviewers approve the strategy, add a signed‑off line to `docs/TEST-STRATEGY_SIGNOFF.md` following the format:
-> `Signed off by [Name] on [Date]`
+- **Coverage**: Coverage reports are generated and uploaded to Codecov. The pipeline fails if coverage drops below the thresholds.
+- **Logs**: Test output is captured and stored in the GitHub Actions UI for easy review.
+- **PR Checks**: GitHub status checks enforce that the test suite passes before merging.
+
+## Maintenance
+
+- All new feature branches must include any required test files (PHPUnit test classes or Cypress specs).
+- When adding new dependencies that affect testing (e.g., a new PHP extension), update the CI workflow accordingly.
+- Periodically review test coverage reports and refactor tests to eliminate redundancy.
 
 ---
 
-> **Author:** Senior Backend Engineer  
-> **Date:** 2026‑04‑24
+**Signed off by**  
+*Development Lead*  
+*Date:* `2026‑04‑24`
