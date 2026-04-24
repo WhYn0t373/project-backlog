@@ -1,33 +1,36 @@
-# Dockerfile for the application
+# syntax=docker/dockerfile:1
 
-FROM php:8.2-fpm
+# Stage 1: Build Composer dependencies
+FROM composer:2 AS composer
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    git \
-    unzip \
-    libzip-dev \
-    libpq-dev \
-    libonig-dev \
-    libicu-dev \
-    zlib1g-dev \
-    libxml2-dev \
-    && docker-php-ext-install pdo pdo_mysql mbstring exif \
-    && docker-php-ext-install intl zip
+WORKDIR /app
 
-# Install Composer
-COPY --from=composer:2.2 /usr/bin/composer /usr/local/bin/composer
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --optimize-autoloader --no-interaction
+
+# Stage 2: Build final image
+FROM php:8.2-fpm-alpine
 
 WORKDIR /var/www/html
 
-# Copy application code
-COPY . .
+COPY --from=composer /app /var/www/html
 
-# Install application dependencies
-RUN composer install --no-interaction --prefer-dist --optimize-autoloader
+RUN apk add --no-cache \
+        icu-dev \
+        libzip-dev \
+        oniguruma-dev \
+        zip \
+        unzip \
+        git \
+        curl \
+        nginx \
+    && docker-php-ext-install pdo_mysql zip intl opcache
 
-# Expose metrics port
-EXPOSE 9112
+# Copy Nginx configuration
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Set default command
-CMD ["php-fpm"]
+RUN rm -f /var/log/nginx/*
+
+EXPOSE 80
+
+CMD ["sh", "-c", "php-fpm & nginx -g 'daemon off;'"]

@@ -1,10 +1,7 @@
-# .dockerignore
 vendor
 node_modules
-storage
-.env
-.env.example
-*.phpunit.result.cache
-.idea
+.git
+.github
+.vscode
 *.log
-*.sql
+.env
