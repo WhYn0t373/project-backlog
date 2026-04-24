@@ -3,21 +3,17 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>@yield('title', config('app.name'))</title>
-    <!-- CSRF Token -->
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    <!-- Main app stylesheet -->
-    <link rel="stylesheet" href="{{ asset('css/app.css') }}">
-    <!-- Conversion page specific stylesheet -->
-    <link rel="stylesheet" href="{{ asset('css/conversion.css') }}">
+    <title>{{ config('app.name', 'Laravel') }}</title>
+    <link href="{{ mix('css/app.css') }}" rel="stylesheet">
+    <link href="{{ mix('css/navbar.css') }}" rel="stylesheet">
 </head>
-<body>
-    <div id="app">
+<body class="font-sans antialiased">
+    <x-navbar />
+    <main class="py-4">
         @yield('content')
-    </div>
-    <!-- Main app script -->
-    <script src="{{ asset('js/app.js') }}"></script>
-    <!-- Conversion page specific script -->
-    <script src="{{ asset('js/conversion.js') }}"></script>
+    </main>
+
+    <script src="//cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <script src="{{ mix('js/app.js') }}" defer></script>
 </body>
 </html>
