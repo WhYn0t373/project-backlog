@@ -2,6 +2,6 @@
 
 @section('content')
 <div class="p-4">
-    Welcome to the application!
+    Home page content.
 </div>
 @endsection
