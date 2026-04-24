@@ -2,31 +2,27 @@
 
 namespace App\Providers;
 
-use Illuminate\Support\ServiceProvider;
-use Illuminate\Support\Facades\Route;
+use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
+use Illuminate\Support\Facades\Gate;
+use App\Models\Feature;
+use App\Policies\FeaturePolicy;
 
 class AuthServiceProvider extends ServiceProvider
 {
     /**
-     * Register any authentication / authorization services.
-     *
-     * @return void
+     * The policy mappings for the application.
      */
-    public function register()
-    {
-        // No additional registration needed for JWT middleware alias.
-    }
+    protected $policies = [
+        Feature::class => FeaturePolicy::class,
+    ];
 
     /**
-     * Bootstrap any application services.
-     *
-     * @return void
+     * Register any authentication / authorization services.
      */
-    public function boot()
+    public function boot(): void
     {
         $this->registerPolicies();
 
-        // Register middleware alias
-        Route::aliasMiddleware('jwt', \App\Http\Middleware\JwtMiddleware::class);
+        // Additional gates can be defined here if needed.
     }
 }
