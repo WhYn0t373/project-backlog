@@ -3,79 +3,56 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
+use Illuminate\Foundation\Auth\AuthenticatesUsers;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Validation\ValidationException;
-use Illuminate\Contracts\Support\Renderable;
-use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 
 /**
- * Controller responsible for handling user authentication.
- *
- * @package App\Http\Controllers\Auth
+ * Handles user login and enforces email verification before allowing
+ * a user to log in. Guests may still access the login form.
  */
 class LoginController extends Controller
 {
+    use AuthenticatesUsers;
+
     /**
-     * Display the login form.
+     * Create a new controller instance.
      *
-     * @return Renderable
+     * @return void
      */
-    public function showLoginForm(): Renderable
+    public function __construct()
+    {
+        // Guests can access all login routes except logout.
+        $this->middleware('guest')->except('logout');
+
+        // No need for 'verified' middleware on login routes.
+    }
+
+    /**
+     * Show the application's login form.
+     *
+     * @return \Illuminate\View\View
+     */
+    public function showLoginForm()
     {
         return view('auth.login');
     }
 
     /**
-     * Handle an authentication attempt.
+     * Override the authenticated hook to prevent unverified users from logging in.
      *
      * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\RedirectResponse
-     *
-     * @throws \Illuminate\Validation\ValidationException
+     * @param  \App\Models\User           $user
+     * @return \Illuminate\Http\RedirectResponse|null
      */
-    public function login(Request $request): RedirectResponse
+    protected function authenticated(Request $request, $user)
     {
-        // Validate the incoming request data.
-        $credentials = $request->validate([
-            'email'    => ['required', 'email'],
-            'password' => ['required'],
-        ]);
+        if (! $user->hasVerifiedEmail()) {
+            Auth::logout();
 
-        // Log the login attempt (for audit).
-        Log::info('Login attempt', [
-            'email' => $credentials['email'],
-            'timestamp' => now()->toDateTimeString(),
-            'remote_ip' => $request->ip(),
-        ]);
-
-        // Attempt to authenticate the user.
-        if (Auth::attempt($credentials, $request->boolean('remember'))) {
-            // Regenerate the session to prevent fixation attacks.
-            $request->session()->regenerate();
-
-            // Log successful authentication.
-            Log::info('User authenticated successfully', [
-                'user_id' => auth()->id(),
-                'email' => $credentials['email'],
-                'timestamp' => now()->toDateTimeString(),
-            ]);
-
-            // Redirect to intended page or home.
-            return redirect()->intended(route('home'));
+            return redirect()
+                ->route('login')
+                ->with('status', 'verification-link-sent');
         }
-
-        // Authentication failed: log the event.
-        Log::warning('Failed login attempt', [
-            'email' => $credentials['email'],
-            'timestamp' => now()->toDateTimeString(),
-            'remote_ip' => $request->ip(),
-        ]);
-
-        // Throw a validation exception with a generic error message.
-        throw ValidationException::withMessages([
-            'email' => __('auth.failed'),
-        ]);
     }
 }
