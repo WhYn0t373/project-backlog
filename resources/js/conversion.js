@@ -1,108 +1,104 @@
-document.addEventListener('DOMContentLoaded', function () {
-    const dropArea = document.getElementById('drop-area');
-    const fileInput = document.getElementById('file-input');
-    const progressBar = document.getElementById('progress-bar');
-    const progressPercent = document.getElementById('progress-percent');
-    const errorMsg = document.getElementById('error-msg');
-    const downloadLink = document.getElementById('download-link');
+/**
+ * Conversion workflow script
+ * Handles file upload, polling for status, progress bar updates, and download link rendering.
+ */
+import axios from 'axios';
 
-    // Helper to reset UI
-    function resetUI() {
-        progressBar.classList.add('hidden');
-        errorMsg.classList.add('hidden');
-        downloadLink.classList.add('hidden');
-        progressPercent.textContent = '';
-    }
+(function () {
+    const fileInput = document.getElementById('fileInput');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const progressBar = document.getElementById('progressBar');
+    const progressEl = document.getElementById('progress');
+    const progressText = document.getElementById('progressText');
+    const downloadLink = document.getElementById('downloadLink');
 
-    // Show error message
-    function showError(message) {
-        errorMsg.textContent = message;
-        errorMsg.classList.remove('hidden');
-    }
+    let conversionId = null;
+    let pollingInterval = null;
 
-    // Handle file selection
-    function handleFile(file) {
-        resetUI();
+    /**
+     * Utility to set CSRF token header for axios requests
+     */
+    const setAxiosCsrf = () => {
+        const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        if (token) {
+            axios.defaults.headers.common['X-CSRF-TOKEN'] = token;
+        }
+    };
+
+    /**
+     * Upload the selected file to the server
+     */
+    const uploadFile = async () => {
+        const file = fileInput.files[0];
+        if (!file) {
+            alert('Please select a file to upload.');
+            return;
+        }
+
+        // Disable UI elements during upload
+        uploadBtn.disabled = true;
+        fileInput.disabled = true;
+
         const formData = new FormData();
         formData.append('file', file);
 
-        const xhr = new XMLHttpRequest();
-        xhr.open('POST', '/conversion/upload', true);
-
-        // Set CSRF token header if available
-        const csrfMeta = document.querySelector('meta[name="csrf-token"]');
-        if (csrfMeta) {
-            xhr.setRequestHeader('X-CSRF-TOKEN', csrfMeta.content);
-        }
-
-        // Upload progress
-        xhr.upload.addEventListener('progress', function (e) {
-            if (e.lengthComputable) {
-                const percent = Math.round((e.loaded / e.total) * 100);
-                progressBar.classList.remove('hidden');
-                progressPercent.textContent = `${percent}%`;
-                progressPercent.style.width = `${percent}%`;
-            }
-        });
-
-        xhr.addEventListener('load', function () {
-            if (xhr.status === 200) {
-                const response = JSON.parse(xhr.responseText);
-                if (response.success) {
-                    downloadLink.href = response.download_url;
-                    downloadLink.classList.remove('hidden');
-                } else {
-                    showError(response.message || 'Unknown error during conversion.');
+        try {
+            const response = await axios.post('/conversion/upload', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+                onUploadProgress: (progressEvent) => {
+                    const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                    progressEl.value = percentCompleted;
+                    progressText.textContent = `${percentCompleted}% (Uploading)`;
                 }
-            } else {
-                let errMsg = 'Upload failed.';
-                try {
-                    const resp = JSON.parse(xhr.responseText);
-                    errMsg = resp.message || errMsg;
-                } catch (e) {}
-                showError(errMsg);
+            });
+
+            conversionId = response.data.id;
+            if (!conversionId) {
+                throw new Error('No conversion ID returned from server.');
             }
-        });
 
-        xhr.addEventListener('error', function () {
-            showError('Network error during file upload.');
-        });
+            // Show the progress bar and reset progress
+            progressBar.hidden = false;
+            progressEl.value = 0;
+            progressText.textContent = '0% (Queued)';
 
-        xhr.send(formData);
-    }
-
-    // Click on drop area triggers file dialog
-    dropArea.addEventListener('click', function () {
-        fileInput.click();
-    });
-
-    // File selected via dialog
-    fileInput.addEventListener('change', function (e) {
-        if (e.target.files && e.target.files[0]) {
-            handleFile(e.target.files[0]);
+            // Start polling for status updates
+            pollingInterval = setInterval(pollStatus, 2000);
+        } catch (error) {
+            console.error('Upload failed:', error);
+            alert('Upload failed. Please try again.');
+            uploadBtn.disabled = false;
+            fileInput.disabled = false;
         }
-    });
+    };
 
-    // Drag & drop handlers
-    ['dragenter', 'dragover'].forEach(event => {
-        dropArea.addEventListener(event, function (e) {
-            e.preventDefault();
-            e.stopPropagation();
-            dropArea.classList.add('dragover');
-        });
-    });
+    /**
+     * Poll the conversion status endpoint
+     */
+    const pollStatus = async () => {
+        try {
+            const response = await axios.get(`/conversion/${conversionId}/status`);
+            const { status, progress } = response.data;
 
-    ['dragleave', 'drop'].forEach(event => {
-        dropArea.addEventListener(event, function (e) {
-            e.preventDefault();
-            e.stopPropagation();
-            dropArea.classList.remove('dragover');
-        });
-    });
+            progressEl.value = progress;
+            progressText.textContent = `${progress}% (${status})`;
 
-    dropArea.addEventListener('drop', function (e) {
-        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-            handleFile(e.dataTransfer.files[0]);
+            if (status === 'completed') {
+                clearInterval(pollingInterval);
+                downloadLink.href = `/conversion/${conversionId}/download`;
+                downloadLink.hidden = false;
+            } else if (status === 'failed') {
+                clearInterval(pollingInterval);
+                alert('Conversion failed. Please try again.');
+                uploadBtn.disabled = false;
+                fileInput.disabled = false;
+            }
+        } catch (error) {
+            console.error('Status polling error:', error);
         }
-    });
-});
+    };
+
+    setAxiosCsrf();
+
+    uploadBtn.addEventListener('click', uploadFile);
+})();
