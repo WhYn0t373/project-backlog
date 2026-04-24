@@ -1,4 +1,4 @@
-name: Laravel CI
+name: CI
 
 on:
   push:
@@ -7,58 +7,87 @@ on:
     branches: [ main ]
 
 jobs:
-  test:
+  lint:
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, pdo_mysql
+          ini-values: post_max_size=256M, upload_max_filesize=256M
+      - name: Install Composer dependencies
+        run: composer install --no-progress --prefer-dist
+      - name: Run PHP CS Fixer
+        run: vendor/bin/php-cs-fixer fix --dry-run --diff
 
+  test:
+    needs: lint
+    runs-on: ubuntu-latest
     services:
       mysql:
         image: mysql:8.0
         env:
-          MYSQL_ROOT_PASSWORD: root
+          MYSQL_ROOT_PASSWORD: secret
           MYSQL_DATABASE: laravel
-          MYSQL_USER: root
-          MYSQL_PASSWORD: root
+          MYSQL_USER: laravel
+          MYSQL_PASSWORD: secret
         ports:
           - 3306:3306
         options: >-
           --health-cmd="mysqladmin ping -h localhost"
           --health-interval=10s
           --health-timeout=5s
-          --health-retries=5
-
+          --health-retries=3
     steps:
-      - uses: actions/checkout@v4
-
+      - uses: actions/checkout@v3
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
-          extensions: pdo_mysql, mbstring, dom, zip
-          ini-values: upload_max_filesize=50M,post_max_size=50M, max_file_uploads=20
-          coverage: none
-
+          extensions: mbstring, pdo_mysql
+          ini-values: post_max_size=256M, upload_max_filesize=256M
       - name: Install Composer dependencies
-        run: composer install --prefer-d
-
-      - name: Copy .env
+        run: composer install --no-progress --prefer-dist
+      - name: Copy .env.example
         run: cp .env.example .env
-
-      - name: Generate app key
-        run: php artisan key:generate --no-interaction
-
       - name: Run migrations
-        run: php artisan migrate --no-interaction
+        run: php artisan migrate --env=testing
+      - name: Run PHPUnit tests
+        run: vendor/bin/phpunit
 
-      - name: Run queue worker in background
-        run: |
-          php artisan queue:work --daemon &
-          QUEUE_WORKER_PID=$!
-          echo "Queue worker started with PID $QUEUE_WORKER_PID"
-
-      - name: Run tests
-        run: php artisan test --stop-on-failure
-
-      - name: Stop queue worker
-        run: |
-          kill $QUEUE_WORKER_PID
-          wait $QUEUE_WORKER_PID 2>/dev/null || true
+  acceptance:
+    needs: test
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: secret
+          MYSQL_DATABASE: laravel
+          MYSQL_USER: laravel
+          MYSQL_PASSWORD: secret
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install npm dependencies
+        run: npm ci
+      - name: Build assets
+        run: npm run dev
+      - name: Copy .env.example
+        run: cp .env.example .env
+      - name: Run migrations
+        run: php artisan migrate --env=testing
+      - name: Run Playwright acceptance tests
+        run: npx playwright test

@@ -6,33 +6,32 @@ use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Laravel\Sanctum\HasApiTokens;
 
 /**
- * App\Models\User
+ * The User model implements Laravel's MustVerifyEmail contract to enable
+ * email verification.  All default functionality remains unchanged.
  *
- * The primary user model.
+ * @property string|null $email_verified_at
  */
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmail
 {
-    use HasApiTokens, HasFactory, Notifiable;
+    use HasFactory, Notifiable;
 
     /**
      * The attributes that are mass assignable.
      *
-     * @var array<int, string>
+     * @var array<int,string>
      */
     protected $fillable = [
         'name',
         'email',
         'password',
-        'role',
     ];
 
     /**
      * The attributes that should be hidden for serialization.
      *
-     * @var array<int, string>
+     * @var array<int,string>
      */
     protected $hidden = [
         'password',
@@ -40,30 +39,11 @@ class User extends Authenticatable
     ];
 
     /**
-     * The attributes that should be cast.
+     * The attributes that should be cast to native types.
      *
-     * @var array<string, string>
+     * @var array<string,string>
      */
     protected $casts = [
         'email_verified_at' => 'datetime',
-        'role' => 'string',
     ];
-
-    /**
-     * Determine if the user has an admin role.
-     *
-     * @return bool
-     */
-    public function isAdmin(): bool
-    {
-        return $this->role === 'admin';
-    }
-
-    /**
-     * Get the posts that belong to the user.
-     */
-    public function posts()
-    {
-        return $this->hasMany(Post::class);
-    }
 }
