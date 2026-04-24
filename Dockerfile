@@ -1,46 +1,25 @@
-# Use official PHP image with FPM
-FROM php:8.3-fpm-alpine
+# Use official PHP FPM image
+FROM php:8.2-fpm
 
-# Install system dependencies
-RUN apk add --no-cache \
+# Install system dependencies and MySQL client
+RUN apt-get update && apt-get install -y \
+    default-mysql-client \
     git \
-    curl \
-    libpng-dev \
-    libjpeg-turbo-dev \
-    freetype-dev \
-    libzip-dev \
-    zip \
     unzip \
-    bash \
-    nodejs \
-    npm
+    && rm -rf /var/lib/apt/lists/*
 
 # Install PHP extensions
-RUN docker-php-ext-install pdo_mysql \
-    gd \
-    zip
+RUN docker-php-ext-install pdo pdo_mysql
 
-# Install Composer
-COPY --from=composer:2.7 /usr/bin/composer /usr/bin/composer
+# Set working directory
+WORKDIR /var/www/html
 
-# Create application directory
-WORKDIR /var/www
-
-# Copy composer files
-COPY composer.json composer.lock ./
-
-# Install dependencies
-RUN composer install --no-dev --optimize-autoloader
-
-# Copy application code
+# Copy application files
 COPY . .
 
-# Set permissions
-RUN chown -R www-data:www-data /var/www \
-    && chmod -R 755 /var/www/storage
+# Install Composer dependencies
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer \
+    && composer install --no-interaction --no-dev --prefer-dist
 
-# Expose port
-EXPOSE 9000
-
-# Start PHP-FPM
+# Start PHP-FPM server
 CMD ["php-fpm"]
