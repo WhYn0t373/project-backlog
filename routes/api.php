@@ -1,13 +1,17 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\FeatureController;
-use App\Http\Controllers\ConversionController;
+use App\Http\Controllers\Auth\RefreshTokenController;
 
-// Feature deletion – only admins
-Route::middleware('role:admin')
-    ->delete('/features/{feature}', [FeatureController::class, 'destroy']);
+/*
+|--------------------------------------------------------------------------
+| API Routes
+|--------------------------------------------------------------------------
+|
+| Here is where you can register API routes for your application. These
+| routes are loaded by the RouteServiceProvider within a group which
+| is assigned the "api" middleware group. Enjoy building your API!
+|
+*/
 
-// Conversion endpoint – accessible by admins and standard users
-Route::middleware('role:admin,user')
-    ->post('/conversion', [ConversionController::class, 'convert']);
+Route::post('/auth/refresh', [RefreshTokenController::class, 'refresh']);
