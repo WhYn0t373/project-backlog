@@ -1,0 +1,15 @@
+# Laravel
+/vendor
+/node_modules
+/public/storage
+/.idea
+/.vscode
+/.env
+/.env.*
+Homestead.json
+Homestead.yaml
+npm-debug.log
+yarn-error.log
+phpunit.xml
+coverage.xml
+phpunit.result.cache
