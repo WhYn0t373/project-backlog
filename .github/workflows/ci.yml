@@ -6,103 +6,60 @@ on:
   pull_request:
     branches: [ main ]
 
-env:
-  IMAGE_NAME: myapp
-  REGISTRY: ghcr.io/${{ github.repository_owner }}
-
 jobs:
-  lint:
+  build-and-test:
     runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.3
+        env:
+          MYSQL_ROOT_PASSWORD: secret
+          MYSQL_DATABASE: laravel
+          MYSQL_USER: root
+          MYSQL_PASSWORD: secret
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -uroot -psecret"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
     steps:
-      - uses: actions/checkout@v3
-
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y php-cs-fixer
-          npm ci
-
-      - name: Run linting
-        run: bash scripts/lint.sh
-
-  test:
-    runs-on: ubuntu-latest
-    needs: lint
-    steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: 8.2
-          extensions: mbstring, pdo, pdo_mysql
+          php-version: "8.3"
+          extensions: pdo_mysql, mbstring, exif, gd, zip
+          coverage: pcov
 
       - name: Install Composer dependencies
-        run: composer install
+        run: |
+          composer install --prefer-dist --no-progress --no-suggest --optimize-autoloader
 
-      - name: Install Node dependencies
-        run: npm ci
+      - name: Copy .env for testing
+        run: |
+          cp .env.example .env
+          echo "DB_HOST=mysql" >> .env
+          echo "DB_DATABASE=laravel" >> .env
+          echo "DB_USERNAME=root" >> .env
+          echo "DB_PASSWORD=secret" >> .env
+          echo "JWT_SECRET=demo_secret_32_bytes_string_demo_secret_32" >> .env
+          echo "JWT_TTL=60" >> .env
 
-      - name: Run PHP unit tests
-        run: vendor/bin/phpunit
+      - name: Run migrations
+        run: |
+          php artisan migrate --env=testing --no-interaction
 
-      - name: Run JavaScript tests
-        run: npm test
+      - name: Run PHPUnit tests
+        run: |
+          vendor/bin/phpunit --coverage-clover=coverage.xml
 
-  build:
-    runs-on: ubuntu-latest
-    needs: test
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+      - name: Upload PHPUnit coverage
+        uses: actions/upload-artifact@v4
         with:
-          registry: ghcr.io
-          username: ${{ secrets.REGISTRY_USERNAME }}
-          password: ${{ secrets.REGISTRY_PASSWORD }}
-
-      - name: Build and push Docker image
-        id: docker_build
-        run: |
-          IMAGE_TAG=${{ github.sha }}
-          docker buildx build \
-            --platform linux/amd64,linux/arm64 \
-            --tag $REGISTRY/${IMAGE_NAME}:${IMAGE_TAG} \
-            --tag $REGISTRY/${IMAGE_NAME}:latest \
-            --push .
-
-  deploy:
-    runs-on: ubuntu-latest
-    needs: build
-    environment:
-      name: staging
-      url: ${{ secrets.STAGING_URL }}
-    env:
-      IMAGE_TAG: ${{ github.sha }}
-      REGISTRY_URL: ghcr.io/${{ github.repository_owner }}
-      IMAGE_NAME: ${{ env.IMAGE_NAME }}
-    steps:
-      - name: Decode SSH key
-        run: |
-          echo "${{ secrets.STAGING_SSH_KEY }}" > /tmp/id_rsa
-          chmod 600 /tmp/id_rsa
-
-      - name: Set up SSH agent
-        run: |
-          eval "$(ssh-agent -s)"
-          ssh-add /tmp/id_rsa
-
-      - name: Deploy to staging
-        run: |
-          # Transfer deployment script to staging host
-          scp -o StrictHostKeyChecking=no -i /tmp/id_rsa deploy_staging.sh ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }}:/tmp/deploy_staging.sh
-
-          # Execute the deployment script on the staging host
-          ssh -o StrictHostKeyChecking=no -i /tmp/id_rsa ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }} 'bash /tmp/deploy_staging.sh'
+          name: phpunit-coverage
+          path: coverage.xml
