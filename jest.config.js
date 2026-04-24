@@ -1,14 +1,16 @@
-/**
- * Jest configuration for the project.
- *
- * - Uses the Node test environment.
- * - Executes `test/setup.js` after Jest has been initialized to configure
- *   global settings and environment variables.
- * - Sets a generous test timeout to accommodate database operations.
- */
-
 module.exports = {
+  preset: 'ts-jest',
   testEnvironment: 'node',
-  setupFilesAfterEnv: ['<rootDir>/test/setup.js'],
-  testTimeout: 30_000, // 30 seconds
+  testMatch: ['**/*.{spec,test}.ts'],
+  moduleFileExtensions: ['ts', 'tsx', 'js', 'json'],
+  coverageDirectory: 'coverage',
+  coverageReporters: ['json', 'lcov', 'text', 'clover'],
+  coverageThreshold: {
+    global: {
+      statements: 80,
+      branches: 80,
+      functions: 80,
+      lines: 80
+    }
+  }
 };
