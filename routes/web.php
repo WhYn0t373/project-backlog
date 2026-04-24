@@ -1,49 +1,24 @@
 <?php
 
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\ConversionController;
 
 /*
 |--------------------------------------------------------------------------
 | Web Routes
 |--------------------------------------------------------------------------
 |
-| Here is where you can register web routes for your application. These
-| routes are loaded by the RouteServiceProvider within a group which
-| contains the "web" middleware group. Enjoy building your
-| application!
+| Here is where you can register web routes for your application.
+| These routes are loaded by the RouteServiceProvider within a group
+| which contains the "web" middleware group. Now create something great!
 |
 */
 
-Route::get('/', function () {
-    return view('welcome');
-});
+Route::post('/conversion/upload', [ConversionController::class, 'upload'])
+    ->name('conversion.upload');
 
-/*
-|--------------------------------------------------------------------------
-| Authentication Routes
-|--------------------------------------------------------------------------
-|
-| The following line registers all authentication routes including the
-| email‑verification routes. The 'verify' option ensures routes for
-| email verification are created.
-|
-*/
+Route::get('/conversion/{id}/status', [ConversionController::class, 'status'])
+    ->name('conversion.status');
 
-Auth::routes(['verify' => true]);
-
-/*
-|--------------------------------------------------------------------------
-| Home Route
-|--------------------------------------------------------------------------
-|
-| A simple home page that authenticated users are redirected to after
-| successful login. The route is protected by the 'auth' middleware.
-|
-*/
-
-Route::get('/home', function () {
-    return view('home');
-})->middleware('auth');
-
-// Add any additional application routes below.
+Route::get('/conversion/{id}/download', [ConversionController::class, 'download'])
+    ->name('conversion.download');
