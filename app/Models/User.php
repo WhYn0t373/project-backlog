@@ -6,11 +6,16 @@ use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Laravel\Sanctum\HasApiTokens;
 
+/**
+ * App\Models\User
+ *
+ * The primary user model.
+ */
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable;
 
     /**
      * The attributes that are mass assignable.
@@ -21,11 +26,11 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'role_id',
+        'role',
     ];
 
     /**
-     * The attributes that should be hidden for arrays.
+     * The attributes that should be hidden for serialization.
      *
      * @var array<int, string>
      */
@@ -41,25 +46,24 @@ class User extends Authenticatable
      */
     protected $casts = [
         'email_verified_at' => 'datetime',
+        'role' => 'string',
     ];
 
     /**
-     * Get the role associated with the user.
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
-     */
-    public function role(): BelongsTo
-    {
-        return $this->belongsTo(Role::class);
-    }
-
-    /**
-     * Determine if the user has the admin role.
+     * Determine if the user has an admin role.
      *
      * @return bool
      */
     public function isAdmin(): bool
     {
-        return $this->role && $this->role->name === 'admin';
+        return $this->role === 'admin';
+    }
+
+    /**
+     * Get the posts that belong to the user.
+     */
+    public function posts()
+    {
+        return $this->hasMany(Post::class);
     }
 }
