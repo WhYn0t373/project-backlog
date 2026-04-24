@@ -1,7 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\LoginController;
+use App\Http\Controllers\Auth\LoginController;
 
 /*
 |--------------------------------------------------------------------------
@@ -14,41 +14,13 @@ use App\Http\Controllers\LoginController;
 |
 */
 
-// Existing routes...
-// Route::get('/', function () {
-//     return view('welcome');
-// });
-
-// Login routes
+// Authentication Routes
 Route::get('/login', [LoginController::class, 'showLoginForm'])
     ->name('login');
 
 Route::post('/login', [LoginController::class, 'login'])
-    ->name('login.submit');
+    ->name('login.post');
 
-// Root route
-Route::get('/', function () {
-    return view('welcome');
-})->name('welcome');
-
-// Home route
-Route::get('/home', function () {
-    return view('home');
-})->name('home');
-
-// Dummy routes for navigation links
-Route::get('/register', function () {
-    return 'register';
-})->name('register');
-
-Route::get('/password/reset', function () {
-    return 'password reset';
-})->name('password.request');
-
-Route::get('/profile/show', function () {
-    return 'profile';
-})->name('profile.show');
-
-Route::post('/logout', function () {
-    return 'logout';
-})->name('logout');
+// ----------------------------------------------
+// Other routes can be added below this line.
+// ----------------------------------------------
