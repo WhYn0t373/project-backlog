@@ -2,30 +2,23 @@
 
 namespace App\Http;
 
-use App\Http\Middleware\CacheResponse;
-use App\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Foundation\Http\Kernel as HttpKernel;
 
-/**
- * Application HTTP kernel.
- *
- * @package App\Http
- */
 class Kernel extends HttpKernel
 {
     /**
-     * Global middleware stack.
+     * The application's global HTTP middleware stack.
      *
-     * @var array<int, string>
+     * @var array<int, class-string|string>
      */
     protected $middleware = [
         // Existing global middleware...
     ];
 
     /**
-     * Route middleware groups.
+     * The application's route middleware groups.
      *
-     * @var array<string, array<int, string>>
+     * @var array<string, array<int, class-string|string>>
      */
     protected $middlewareGroups = [
         'web' => [
@@ -33,20 +26,18 @@ class Kernel extends HttpKernel
         ],
 
         'api' => [
-            // Apply rate‑limit middleware to all API routes
             'throttle:api',
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
         ],
     ];
 
     /**
-     * Route middleware.
+     * The application's route middleware.
      *
-     * @var array wszystkich middleware...
+     * @var array<string, class-string|string>
      */
     protected $routeMiddleware = [
-        'auth' => \App\Http\Middleware\Authenticate::class,
-        'cache.response' => CacheResponse::class,
-        // Other route middleware...
+        // Existing route middleware...
+        'jwt' => \App\Http\Middleware\JwtMiddleware::class,
     ];
 }

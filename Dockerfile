@@ -1,36 +1,46 @@
-# syntax=docker/dockerfile:1
+# Use official PHP image with FPM
+FROM php:8.3-fpm-alpine
 
-# Stage 1: Build Composer dependencies
-FROM composer:2 AS composer
-
-WORKDIR /app
-
-COPY composer.json composer.lock ./
-RUN composer install --no-dev --optimize-autoloader --no-interaction
-
-# Stage 2: Build final image
-FROM php:8.2-fpm-alpine
-
-WORKDIR /var/www/html
-
-COPY --from=composer /app /var/www/html
-
+# Install system dependencies
 RUN apk add --no-cache \
-        icu-dev \
-        libzip-dev \
-        oniguruma-dev \
-        zip \
-        unzip \
-        git \
-        curl \
-        nginx \
-    && docker-php-ext-install pdo_mysql zip intl opcache
+    git \
+    curl \
+    libpng-dev \
+    libjpeg-turbo-dev \
+    freetype-dev \
+    libzip-dev \
+    zip \
+    unzip \
+    bash \
+    nodejs \
+    npm
 
-# Copy Nginx configuration
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Install PHP extensions
+RUN docker-php-ext-install pdo_mysql \
+    gd \
+    zip
 
-RUN rm -f /var/log/nginx/*
+# Install Composer
+COPY --from=composer:2.7 /usr/bin/composer /usr/bin/composer
 
-EXPOSE 80
+# Create application directory
+WORKDIR /var/www
 
-CMD ["sh", "-c", "php-fpm & nginx -g 'daemon off;'"]
+# Copy composer files
+COPY composer.json composer.lock ./
+
+# Install dependencies
+RUN composer install --no-dev --optimize-autoloader
+
+# Copy application code
+COPY . .
+
+# Set permissions
+RUN chown -R www-data:www-data /var/www \
+    && chmod -R 755 /var/www/storage
+
+# Expose port
+EXPOSE 9000
+
+# Start PHP-FPM
+CMD ["php-fpm"]
