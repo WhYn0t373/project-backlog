@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: project-backlog
+  labels:
+    app: project-backlog
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: project-backlog
+  template:
+    metadata:
+      labels:
+        app: project-backlog
+    spec:
+      containers:
+        - name: project-backlog
+          image: ghcr.io/myorg/project-backlog:latest
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "500m"
+              memory: "1Gi"
+          env:
+            - name: ENVIRONMENT
+              value: "production"
