@@ -1,0 +1,58 @@
+/* Drop area */
+.drop-area {
+    border: 2px dashed #ccc;
+    border-radius: 0.5rem;
+    padding: 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s ease;
+}
+.drop-area.dragover {
+    border-color: #3b82f6;
+}
+
+/* Progress bar */
+.progress-bar {
+    width: 100%;
+    background: #f3f3f3;
+    height: 20px;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-top: 1rem;
+}
+.progress-bar span {
+    display: block;
+    height: 100%;
+    background: #3b82f6;
+    color: #fff;
+    text-align: center;
+    font-size: 0.75rem;
+    line-height: 20px;
+    transition: width 0.2s ease;
+}
+
+/* Hidden utility */
+.hidden {
+    display: none;
+}
+
+/* Error message */
+.error-msg {
+    color: #e53935;
+    margin-top: 1rem;
+    font-weight: 500;
+}
+
+/* Download link */
+.download-link {
+    display: inline-block;
+    margin-top: 1rem;
+    padding: 0.5rem 1rem;
+    background: #3b82f6;
+    color: #fff;
+    border-radius: 0.375rem;
+    text-decoration: none;
+}
+.download-link:hover {
+    background: #2563eb;
+}
