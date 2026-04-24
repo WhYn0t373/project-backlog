@@ -1,22 +1,44 @@
-# Build Stage
-FROM node:20-alpine AS builder
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci
+# Use the official PHP image with FPM
+FROM php:8.2-fpm
+
+# Set working directory
+WORKDIR /var/www/html
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    git \
+    unzip \
+    libzip-dev \
+    libpq-dev \
+    libonig-dev \
+    libxml2-dev \
+    nodejs \
+    npm \
+    && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip
+
+# Install Composer
+COPY --from=composer:2.5 /usr/bin/composer /usr/bin/composer
+
+# Set PHP upload limits
+ENV PHP_UPLOAD_MAX_FILESIZE 50M
+ENV PHP_POST_MAX_SIZE 50M
+ENV PHP_MAX_FILE_UPLOADS 20
+
+# Set timezone
+ENV TZ=UTC
+
+# Copy application
 COPY . .
-RUN npm run build
 
-# Test Stage
-FROM node:20-alpine AS tester
-WORKDIR /app
-COPY --from=builder /app /app
-RUN npm ci
-RUN npm test
+# Install dependencies
+RUN composer install --prefer-dist --no-interaction --no-progress && \
+    npm install && npm run prod
 
-# Production Stage
-FROM node:20-alpine AS production
-WORKDIR /app
-COPY --from=builder /app/dist ./dist
-COPY package*.json ./
-RUN npm ci --production
-CMD ["node", "dist/index.js"]
+# Generate key if not set
+RUN php artisan key:generate
+
+# Expose port 9000
+EXPOSE 9000
+
+# Default command
+CMD ["php-fpm"]

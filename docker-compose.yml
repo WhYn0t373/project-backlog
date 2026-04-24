@@ -1,24 +1,78 @@
 version: '3.8'
 
 services:
-  mysql:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: laravel_app
+    container_name: laravel_app
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      - .:/var/www/html
+      - ./storage:/var/www/html/storage
+    env_file:
+      - .env
+    depends_on:
+      - db
+    networks:
+      - laravel
+
+  web:
+    image: nginx:alpine
+    container_name: laravel_web
+    restart: unless-stopped
+    depends_on:
+      - app
+    volumes:
+      - .:/var/www/html
+      - ./docker/nginx/conf.d:/etc/nginx/conf.d
+      - ./storage:/var/www/html/storage
+    ports:
+      - "8080:80"
+    networks:
+      - laravel
+
+  db:
     image: mysql:8.0
-    container_name: mysql
+    container_name: laravel_db
     restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: project_backlog
+      MYSQL_DATABASE: laravel
       MYSQL_USER: root
       MYSQL_PASSWORD: root
+    volumes:
+      - db_data:/var/lib/mysql
     ports:
       - "3306:3306"
+    networks:
+      - laravel
+
+  queue:
+    # Duplicate the app service configuration but change the command
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: laravel_app
+    container_name: laravel_queue
+    restart: unless-stopped
+    working_dir: /var/www/html
     volumes:
-      - mysql_data:/var/lib/mysql
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      - .:/var/www/html
+      - ./storage:/var/www/html/storage
+    env_file:
+      - .env
+    command: ["php", "artisan", "queue:work", "--tries=3", "--timeout=60"]
+    depends_on:
+      - db
+    networks:
+      - laravel
 
 volumes:
-  mysql_data:
+  db_data:
+
+networks:
+  laravel:
+    driver: bridge
