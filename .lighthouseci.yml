@@ -1,0 +1,8 @@
+ci:
+  collect:
+    url: 'http://localhost:8000'
+    startPath: '/'
+  assert:
+    preset: 'lighthouse:no-audits'
+    thresholds:
+      cat.performance: 90

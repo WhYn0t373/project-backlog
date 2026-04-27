@@ -1,15 +1,28 @@
-# Laravel
+# Laravel binaries
 /vendor
 /node_modules
-/public/storage
-/.idea
-/.vscode
-/.env
-/.env.*
-Homestead.json
-Homestead.yaml
-npm-debug.log
-yarn-error.log
-phpunit.xml
-coverage.xml
-phpunit.result.cache
+
+# Composer dependencies
+composer.lock
+
+# IDE settings
+.idea
+
+# Runtime data
+/storage/logs
+
+# Public files
+/public/hot
+
+# Laravel Mix
+/public/mix-manifest.json
+/public/js/*.js
+/public/css/*.css
+
+# Miscellaneous
+*.pyc
+*.pyo
+*.log
+
+# Bundle size report
+bundle-size.json
