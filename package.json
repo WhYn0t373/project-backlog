@@ -1,15 +1,23 @@
+```json
 {
-  "name": "project-name",
+  "name": "my-project",
   "version": "1.0.0",
-  "main": "dist/index.js",
+  "private": true,
   "scripts": {
-    "test": "jest --coverage",
-    "build": "tsc"
+    "dev": "npm run development",
+    "development": "mix",
+    "watch": "mix watch",
+    "watch-poll": "mix watch -- --watch-options-poll=1000",
+    "hot": "mix watch --hot",
+    "prod": "npm run production",
+    "production": "mix --production",
+    "build": "npm run dev",
+    "size-check": "webpack-bundle-analyzer --mode production --report json > bundle-size.json"
   },
   "devDependencies": {
-    "jest": "^29.6.1",
-    "ts-jest": "^29.1.1",
-    "@types/jest": "^29.5.12",
-    "typescript": "^5.3.3"
+    "laravel-mix": "^6.0.49",
+    "webpack-bundle-analyzer": "^4.9.0",
+    "postcss-purgecss": "^4.0.3"
   }
 }
+```
