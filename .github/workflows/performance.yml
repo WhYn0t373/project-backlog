@@ -1,0 +1,31 @@
+name: Performance Test
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+
+jobs:
+  performance:
+    runs-on: ubuntu-latest
+    env:
+      API_URL: ${{ secrets.API_URL }}
+      API_TOKEN: ${{ secrets.API_TOKEN }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run k6 load test
+        run: |
+          docker run --rm \
+            -e API_URL=${{ env.API_URL }} \
+            -e API_TOKEN=${{ env.API_TOKEN }} \
+            loadimpact/k6 run -o json=./results.json k6/loadtest.js
+
+      - name: Upload k6 results
+        uses: actions/upload-artifact@v3
+        with:
+          name: k6-results
+          path: results.json
