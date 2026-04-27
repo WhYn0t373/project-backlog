@@ -1,7 +1,7 @@
 <?php
 
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Auth\RefreshTokenController;
 
 /*
 |--------------------------------------------------------------------------
@@ -14,4 +14,15 @@ use App\Http\Controllers\Auth\RefreshTokenController;
 |
 */
 
-Route::post('/auth/refresh', [RefreshTokenController::class, 'refresh']);
+// Existing API routes...
+
+/**
+ * Health check endpoint.
+ *
+ * This simple endpoint returns a 200 OK status with a JSON payload.
+ * It can be used by monitoring tools or load test scripts to verify
+ * that the API is reachable and functioning.
+ */
+Route::get('/health', function () {
+    return response()->json(['status' => 'ok'], 200);
+});

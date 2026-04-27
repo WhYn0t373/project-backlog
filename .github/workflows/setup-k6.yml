@@ -1,0 +1,39 @@
+name: Setup k6
+
+on:
+  workflow_call:
+    inputs:
+      api_url:
+        description: 'Base URL of the API to test'
+        required: true
+        type: string
+      api_token:
+        description: 'Bearer token for authenticated endpoints (optional)'
+        required: false
+        type: string
+      script:
+        description: 'Path to the k6 script'
+        required: false
+        type: string
+        default: 'k6/loadtest.js'
+
+jobs:
+  k6:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run k6
+        id: k6_run
+        run: |
+          docker run --rm \
+            -e API_URL=${{ inputs.api_url }} \
+            -e API_TOKEN=${{ inputs.api_token }} \
+            loadimpact/k6 run -o json=./results.json ${{ inputs.script }}
+
+      - name: Upload results
+        uses: actions/upload-artifact@v3
+        with:
+          name: k6-results
+          path: results.json
