@@ -1,12 +1,19 @@
 {
-  "name": "ci-test",
-  "private": true,
+  "name": "project-backlog",
   "version": "1.0.0",
-  "description": "Minimal package for CI pipeline testing",
+  "private": true,
   "scripts": {
-    "test": "echo \"No tests defined\"",
-    "lint": "echo \"No lint defined\"",
-    "bench": "echo \"No benchmarks defined\""
+    "start": "node server.js",
+    "build": "echo 'Build script placeholder'",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "test:accessibility": "node accessibility-tests.js"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "axe-core": "^4.6.4",
+    "jsdom": "^24.0.0",
+    "glob": "^10.3.4"
+  },
+  "dependencies": {
+    // existing dependencies
+  }
 }
